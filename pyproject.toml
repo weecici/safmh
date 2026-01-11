@@ -1,0 +1,12 @@
+[project]
+name = "cs221"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "kagglehub>=0.3.13",
+    "matplotlib>=3.10.8",
+    "seaborn>=0.13.2",
+    "wordcloud>=1.9.5",
+]
