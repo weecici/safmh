@@ -1,6 +1,5 @@
 # Sentiment Analysis for Mental Health
 
-This repository contains a sentiment analysis model specifically designed to analyze text related to mental health. The model can classify text into various sentiment categories such as positive, negative, and neutral, helping to identify emotional states in written content.
 
 | Student ID | Student Name | Github |
 |------------|--------------|-----------------|
