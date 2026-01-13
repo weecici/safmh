@@ -10,3 +10,10 @@ wheels/
 
 # Virtual environments
 .venv
+
+
+models/*
+studies/*
+
+!models/.gitkeep
+!studies/.gitkeep
