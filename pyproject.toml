@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "fastapi>=0.128.0",
     "ipykernel>=7.1.0",
     "ipywidgets>=8.1.8",
     "kagglehub>=0.3.13",
@@ -12,7 +13,10 @@ dependencies = [
     "nltk>=3.9.2",
     "optuna>=4.6.0",
     "pandas>=2.3.3",
+    "pydantic>=2.12.5",
     "scikit-learn>=1.8.0",
     "seaborn>=0.13.2",
+    "streamlit>=1.52.2",
+    "uvicorn>=0.40.0",
     "wordcloud>=1.9.5",
 ]
