@@ -12,6 +12,7 @@ wheels/
 .venv
 
 
+data/
 models/*
 studies/*
 
