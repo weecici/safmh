@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+pandas
+requests
+joblib
+scikit-learn
+nltk
+deep-translator
