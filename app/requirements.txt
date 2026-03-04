@@ -1,7 +1,10 @@
 fastapi
 uvicorn
-pydantic
-scikit-learn
-joblib
 streamlit
+plotly
+pandas
 requests
+joblib
+scikit-learn
+nltk
+deep-translator

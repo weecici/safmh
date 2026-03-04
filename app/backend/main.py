@@ -1,60 +1,90 @@
-"""
-File: ./app/backend/main.py
-Description:
-- Main entry point for FastAPI backend
-- Loads trained SVC pipeline from models/svc_pipeline.pkl
-- Endpoints for health check and inference
-"""
 from fastapi import FastAPI, HTTPException
-from schemas import SentimentRequest, SentimentResponse
+from pydantic import BaseModel
 import joblib
 import os
+import pandas as pd
+from pipe import full_preprocess, crawl_reddit_live, translate_text
+import logging
 
-app = FastAPI(title="Sentiment Analysis API", version="1.0.0")
+app = FastAPI()
 
-# Path to the model file
-MODEL_FILE = "svc_pipeline.pkl"
-MODEL_PATH = f"/models/{MODEL_FILE}"
-model = None
+# Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("backend")
 
-@app.on_event("startup")
-async def startup_event():
-    """
-    Load the trained model from disk on startup.
-    """
-    global model
-    if not os.path.exists(MODEL_PATH):
-        print(f"Warning: Model file not found at {MODEL_PATH}")
-        return
+# Load Model
+MODEL_PATH = "../../models/svc_pipeline.pkl"
+try:
+    # We load the pipeline. Remember this pipeline has TfidfVectorizer + LinearSVC
+    # It expects *preprocessed* text (as string) if trained that way.
+    # Based on notebook, X was 'statement_processed'.
+    model_pipeline = joblib.load(MODEL_PATH)
+    logger.info("Model loaded successfully.")
+except Exception as e:
+    logger.error(f"Failed to load model: {e}")
+    model_pipeline = None
+
+class PredictionRequest(BaseModel):
+    text: str
+
+@app.get("/")
+def home():
+    return {"status": "ok", "message": "Sentiment Analysis Backend Live"}
+
+@app.post("/predict")
+def predict_sentiment(request: PredictionRequest):
+    if not model_pipeline:
+        raise HTTPException(status_code=503, detail="Model not loaded")
     
-    try:
-        model = joblib.load(MODEL_PATH)
-        print(f"Model loaded successfully from {MODEL_PATH}")
-    except Exception as e:
-        print(f"Error loading model: {e}")
-
-@app.get("/api/v1/health")
-async def health_check():
-    return {"status": "healthy", "model_loaded": model is not None}
-
-@app.post("/api/v1/predict", response_model=SentimentResponse)
-async def predict_sentiment(request: SentimentRequest):
-    """
-    Predict sentiment using the loaded SVC pipeline.
-    """
-    if model is None:
-        raise HTTPException(status_code=503, detail="Model is not loaded")
+    # 1. Preprocess
+    processed_text = full_preprocess(request.text)
     
-    if not request.text:
-        raise HTTPException(status_code=400, detail="Input text cannot be empty")
+    # 2. Predict
+    # Scikit-learn pipeline expects iterable
+    prediction = model_pipeline.predict([processed_text])[0]
+    
+    return {"text": request.text, "processed": processed_text, "sentiment": prediction}
 
+@app.get("/crawl_live")
+def trigger_live_crawl():
+    """
+    Crawls ~5-10 posts, translates, and predicts.
+    Returns the list of analyzed posts.
+    """
+    if not model_pipeline:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+        
     try:
-        input_data = [request.text]
-        prediction = model.predict(input_data)[0]
+        # 1. Crawl
+        df_new = crawl_reddit_live(limit=20)
+        
+        if df_new.empty:
+            return {"message": "No new relevant posts found.", "data": []}
+        
+        results = []
+        
+        for _, row in df_new.iterrows():
+            original_text = row['full_text']
+            
+            # 2. Translate
+            translated_text = translate_text(original_text)
+            
+            # 3. Preprocess
+            processed_text = full_preprocess(translated_text)
+            
+            # 4. Predict
+            sentiment = model_pipeline.predict([processed_text])[0]
+            
+            results.append({
+                "id": row['id'],
+                "date": str(row['date_readable']),
+                "original_text": original_text[:100] + "...", # Snippet
+                "translated_text": translated_text[:100] + "...",
+                "sentiment": sentiment
+            })
+            
+        return {"message": f"Successfully analyzed {len(results)} posts.", "data": results}
 
-        return SentimentResponse(
-            text=request.text,
-            sentiment=str(prediction)
-        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
+        logger.error(f"Live process failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
