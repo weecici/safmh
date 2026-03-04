@@ -3,27 +3,27 @@ version: '3.8'
 services:
   backend:
     build:
-      context: ./backend
+      context: ./app/backend
       dockerfile: Dockerfile
-    container_name: demo_backend
+    container_name: demo_app_backend
     ports:
       - "8000:8000"
     volumes:
-      - ../models:/models
+      - ./models:/models
     environment:
-      - MODEL_PATH=../../models/svc_pipeline.pkl
+      - MODEL_PATH=/models/svc_pipeline.pkl
     networks:
       - demo-network
 
   frontend:
     build:
-      context: ./frontend
+      context: ./app/frontend
       dockerfile: Dockerfile
-    container_name: demo_frontend
+    container_name: demo_app_frontend
     ports:
       - "8501:8501"
     volumes:
-      - ./data:/app/data
+      - ./app/data:/app/data
     environment:
       - BACKEND_URL=http://backend:8000
     depends_on:
